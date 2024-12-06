@@ -1,0 +1,14 @@
+---
+title: "Lab block 2"
+author: "johmo870, nisra674"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Statement of Contribution
+ - Nisal Amashan(nisra674) - Assignment 1, Assignment 3, Report
+ - John Möller (johmo870) - Assignment 2, Assignment 4, Report
