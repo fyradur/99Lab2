@@ -14,3 +14,29 @@ knitr::opts_chunk$set(echo = TRUE)
  - John Möller (johmo870) - Assignment 2, Assignment 4, Report
  
 # Assignment 2
+
+## Data import and cleaning
+
+The categories specified in the data compared to the instructions differed. Here's a summary of the differences:
+
+* There are a number of names without dashes in the instructions but that have dashes in the csv, those are: blue-collar, self-employed.
+* A number of columns had unknown as a category, specifically those between marital to to contact and poutcome.
+* poutcome had 'other' in csv which is assumed in this report to be the same as 'nonexistent' given this category doesn't come up.
+* Day of week column does not exist in csv.
+```{r}
+library(tidyverse)
+df_raw <- read_delim(file = "data/bank-full.csv", delim = ";")
+df <- df_raw
+df$job <- factor(df$job, levels = c('admin.','blue-collar','entrepreneur','housemaid','management','retired','self-employed','services','student','technician','unemployed','unknown'))
+df$marital <- factor(df$marital, levels = c('divorced','married','single','unknown'))
+df$education <- factor(df$education, levels = c('primary', 'secondary', 'tertiary', 'unknown'))
+df$default <- factor(df$default, levels = c('no', 'yes', 'unknown'))
+df$housing <- factor(df$housing, levels = c('no', 'yes', 'unknown'))
+df$loan <- factor(df$loan, levels = c('no', 'yes', 'unknown'))
+df$contact <- factor(df$contact, levels = c('cellular', 'telephone', 'unknown'))
+df$month <- factor(df$month, levels = c('jan','feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'))
+#df$day <- factor(df$day, levels = c('mon', 'tue', 'wed', 'thu', 'fri', 'unknown'))
+df$poutcome <- factor(df$poutcome, levels = c('failure', 'other', 'success', 'unknown'))
+colSums(is.na(df))
+```
+
