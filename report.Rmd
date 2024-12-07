@@ -104,3 +104,5 @@ Model 1 (default settings), with 6 terminal nodes, offers a simpler tree but has
 Model 2 (minimum node size 7000), with 5 terminal nodes, results in the same misclassification error rate as the default model (0.1048) but with a slightly higher deviance (0.6097). Restricting the tree’s complexity by setting a large minimum node size didn’t improve performance and likely prevented the model from capturing important data patterns.
 
 In summary, Model 3 provides the best trade-off between fitting the data and minimizing error, while Models 1 and 2 either simplify the tree too much or do not capture enough complexity to improve performance.
+
+## Task 3
