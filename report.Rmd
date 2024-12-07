@@ -39,14 +39,20 @@ df$contact <- factor(df$contact, levels = c('cellular', 'telephone', 'unknown'))
 df$month <- factor(df$month, levels = c('jan','feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'))
 #df$day <- factor(df$day, levels = c('mon', 'tue', 'wed', 'thu', 'fri', 'unknown'))
 df$poutcome <- factor(df$poutcome, levels = c('failure', 'other', 'success', 'unknown'))
+df$y <- factor(df$y, levels = c('yes', 'no'))
 colSums(is.na(df))
 ```
 
 
 ## Task 1
+Let's remove duration
+```{r}
+data <- select(df, -duration)
+names(data)
+```
+
 Let's divide the data as specified in lecture 2a.
 ```{r}
-data <- df
 n=dim(data)[1]
 set.seed(12345) 
 id=sample(1:n, floor(n*0.4)) 
@@ -59,3 +65,42 @@ id3=setdiff(id1,id2)
 test=data[id3,]
 ```
 
+## Task 2
+
+### Importing randomForest library
+```{r}
+library(tree)
+```
+
+
+### Task 2a Decision Tree with default settings
+
+```{r}
+tree_default <- tree(y ~., data = train)
+summary(tree_default)
+```
+
+
+### Task 2b Decision Tree with smallest allowed node size equal to 7000
+
+```{r}
+tree_node_7000 <- tree(y ~., data = train, control = tree.control(nobs = nrow(train), minsize = 7000))
+summary(tree_node_7000)
+```
+
+
+### Task 2c Decision Tree with minimum deviance 0.0005
+
+```{r}
+tree_deviance_0005 <- tree(y ~., data = train, control = tree.control(nobs = nrow(train), mindev = 0.0005))
+summary(tree_deviance_0005)
+```
+
+### Task 2 discussion
+Among the three models, Model 3 (minimum deviance 0.0005) is the best. It achieves the lowest residual mean deviance (0.5213) and misclassification error rate (0.09362), indicating it fits the data better and generalizes well despite having 122 terminal nodes. This suggests that the model, while more complex, captures subtle patterns in the data, improving performance.
+
+Model 1 (default settings), with 6 terminal nodes, offers a simpler tree but has a higher error rate (0.1048) and deviance (0.6022). It strikes a balance between simplicity and performance but doesn’t perform as well as Model 3.
+
+Model 2 (minimum node size 7000), with 5 terminal nodes, results in the same misclassification error rate as the default model (0.1048) but with a slightly higher deviance (0.6097). Restricting the tree’s complexity by setting a large minimum node size didn’t improve performance and likely prevented the model from capturing important data patterns.
+
+In summary, Model 3 provides the best trade-off between fitting the data and minimizing error, while Models 1 and 2 either simplify the tree too much or do not capture enough complexity to improve performance.
