@@ -245,6 +245,252 @@ abline(0, 1, col = "red")
 - While the test MSE for \(\lambda_{optimal}\) is slightly higher than for \(\log(\lambda) = -4\), the optimal \(\lambda\) model is simpler and less prone to overfitting.
 - The scatter plot further confirms the predictive power of the model, as it closely aligns actual and predicted values.
 
+
+
+# Assignment3: Principal components and implicit regularization
+
+### Part1
+
+```{r echo=FALSE}
+suppressPackageStartupMessages(library(dplyr))
+# Load the dataset
+data <- read.csv("data/communities.csv")
+
+# Exclude 'ViolentCrimesPerPop' and scale the rest
+scaled_data <- data %>% select(-ViolentCrimesPerPop) %>% scale()
+```
+
+
+
+```{r echo=FALSE}
+# Compute the covariance matrix
+cov_matrix <- cov(scaled_data)
+
+# Perform eigen decomposition
+eigen_results <- eigen(cov_matrix)
+
+# Extract eigenvalues and calculate explained variance
+eigenvalues <- eigen_results$values
+explained_variance <- eigenvalues / sum(eigenvalues)
+cumulative_variance <- cumsum(explained_variance)
+
+# Find the number of components needed for 95% variance
+num_components_95 <- which(cumulative_variance >= 0.95)[1]
+
+# Proportion of variance explained by the first two components
+pc1_variance <- explained_variance[1]
+pc2_variance <- explained_variance[2]
+```
+
+
+```{r results, echo=FALSE}
+cat("Number of components needed for 95% variance:", num_components_95, "\n")
+cat("Proportion of variance explained by PC1:", pc1_variance, "\n")
+cat("Proportion of variance explained by PC2:", pc2_variance, "\n")
+```
+
+## Interpretation
+
+- **Number of Components for 95% Variance**: `r num_components_95`.
+  - This indicates that 35 principal components are required to capture at least 95% of the variance in the data.
+
+- **Proportion of Variance Explained**:
+  - **PC1**: `r round(pc1_variance, 4)` (25.02%)
+  - **PC2**: `r round(pc2_variance, 4)` (16.94%)
+  - Together, these two components explain approximately 42% of the total variance in the dataset.
+
+### Part2
+```{r , echo=FALSE}
+# Load necessary libraries
+suppressPackageStartupMessages(library(dplyr))
+suppressPackageStartupMessages(library(ggplot2))
+```
+
+### PCA using princomp()
+
+```{r , echo=FALSE}
+# Perform PCA using princomp()
+pca_results <- princomp(scaled_data, cor = TRUE)
+
+# Trace plot of the first principal component
+plot(pca_results$scores[, 1], type = "l", main = "Trace Plot of PC1", ylab = "PC1 Scores")
+```
+
+### Top Contributing Features
+
+```{r echo=FALSE}
+# Identify top 5 contributing features to PC1
+loadings <- pca_results$loadings[, 1]
+top_5_features <- sort(abs(loadings), decreasing = TRUE)[1:5]
+
+# Print results
+cat("Top 5 features contributing to PC1 (absolute values):\n")
+print(names(top_5_features))
+```
+
+### PC1 and PC2 Plot
+
+```{r echo=FALSE}
+# Plot PC scores in PC1 vs PC2 coordinates colored by ViolentCrimesPerPop
+plot_data <- data.frame(PC1 = pca_results$scores[, 1],
+                        PC2 = pca_results$scores[, 2],
+                        Crime = data$ViolentCrimesPerPop)
+
+ggplot(plot_data, aes(x = PC1, y = PC2, color = Crime)) +
+  geom_point() +
+  scale_color_gradient(low = "blue", high = "red") +
+  ggtitle("PC1 vs PC2 Colored by Violent Crimes Per Population")
+```
+
+## Results and Analysis
+
+1. **Top 5 Contributing Features**:
+   - The top 5 features contributing to PC1 (in absolute value) are:
+     - `medFamInc` (Median Family Income)
+     - `medIncome` (Median Income)
+     - `PctKids2Par` (Percentage of Kids in Two-Parent Households)
+     - `pctWInvInc` (Percentage of Households with Investment Income)
+     - `PctPopUnderPov` (Percentage of Population Under Poverty Line)
+     
+2. **Interpretation**:
+   - These features relate to socio-economic factors such as income, family structure, and poverty level. 
+   - There seems to be a logical connection between these factors and the crime rate (`ViolentCrimesPerPop`). 
+   - For instance, higher poverty rates or lower family income might be associated with higher crime levels, while stable family structures might reduce crime.
+
+3. **PC1 vs PC2 Plot**:
+   - The plot of `PC1` vs `PC2` reveals clusters and trends where areas with high `ViolentCrimesPerPop` (in red) may be distinguishable.
+   - This analysis suggests that principal components capture socio-economic patterns related to crime.
+
+### Part3
+
+- **Training Error**: 0.01505
+- **Test Error**: 0.02008
+
+## Interpretation
+
+1. **Training Error**: The training error is relatively low, indicating that the model fits the training data well.
+
+2. **Test Error**: The test error is slightly higher than the training error, but it is still low. This suggests that the model generalizes well to unseen data.
+
+3. **Model Quality**:
+   - The low test error indicates that the linear regression model is able to capture the relationship between the features and the target variable (`ViolentCrimesPerPop`) effectively.
+   - However, linear regression assumes a linear relationship between predictors and the response. If non-linear relationships exist, other methods like regularized regression or non-linear models may perform better.
+
+### Part4
+### Plot: Training and Test Errors Over Iterations
+
+The plot below shows the training and test errors over the iterations of the BFGS optimization process. Initial iterations (first 500) are discarded for better visibility.
+
+```{r plot-errors, echo=FALSE}
+set.seed(123)  # Ensure reproducibility
+train_indices <- sample(1:nrow(data), nrow(data) / 2)
+train_data <- data[train_indices, ]
+test_data <- data[-train_indices, ]
+
+# Scale features and response
+scaled_train <- scale(train_data %>% select(-ViolentCrimesPerPop))
+scaled_test <- scale(test_data %>% select(-ViolentCrimesPerPop),
+                     center = attr(scaled_train, "scaled:center"),
+                     scale = attr(scaled_train, "scaled:scale"))
+
+# Linear regression model
+train_response <- train_data$ViolentCrimesPerPop
+test_response <- test_data$ViolentCrimesPerPop
+model <- lm(train_response ~ ., data = as.data.frame(scaled_train))
+
+# Predict and compute errors
+train_predictions <- predict(model, as.data.frame(scaled_train))
+test_predictions <- predict(model, as.data.frame(scaled_test))
+
+train_error <- mean((train_response - train_predictions)^2)
+test_error <- mean((test_response - test_predictions)^2)
+
+# Create a global variable to store both training and test errors
+iteration_errors <- list()
+iteration_test_errors <- list()
+
+# Define a cost function with tracking
+cost_function_with_tracking <- function(theta, X, y, X_test, y_test) {
+  # Training error
+  train_predictions <- X %*% theta
+  train_error <- y - train_predictions
+  train_mse <- mean(train_error^2)
+  
+  # Test error
+  test_predictions <- X_test %*% theta
+  test_error <- y_test - test_predictions
+  test_mse <- mean(test_error^2)
+  
+  # Store errors
+  iteration_errors <<- append(iteration_errors, list(train_mse))
+  iteration_test_errors <<- append(iteration_test_errors, list(test_mse))
+  
+  return(train_mse)
+}
+
+# Prepare data for optimization
+X_train <- as.matrix(cbind(1, scaled_train))  # Add intercept term
+y_train <- train_response
+
+# Reset error tracking
+iteration_errors <- list()
+iteration_test_errors <- list()
+
+# Run optimization with tracking for both training and test errors
+optim_results <- optim(rep(0, ncol(X_train)), 
+                       fn = function(theta) cost_function_with_tracking(theta, X_train, y_train, as.matrix(cbind(1, scaled_test)), test_response),
+                       method = "BFGS", 
+                       control = list(trace = 1, maxit = 100))
+
+# Create a dataframe for errors
+errors <- data.frame(Iteration = 1:length(iteration_errors),
+                     TrainingError = unlist(iteration_errors),
+                     TestError = unlist(iteration_test_errors))
+
+# Filter out the first 500 iterations for the plot
+filtered_errors <- errors[-(1:500), ]
+
+# Plot training and test errors over iterations
+library(ggplot2)
+ggplot(filtered_errors, aes(x = Iteration)) +
+  geom_line(aes(y = TrainingError, color = "Training Error")) +
+  geom_line(aes(y = TestError, color = "Test Error")) +
+  ggtitle("Training and Test Errors Over Iterations") +
+  ylab("Error") + xlab("Iteration")
+
+```
+
+### Optimal Iteration and Errors
+
+- **Optimal Iteration**: 1895
+- **Optimal Training Error**: 0.01595
+- **Optimal Test Error**: 0.01975
+
+### Comparison with Step 3
+
+- **Step 3 Errors**:
+  - Training Error: 0.01505
+  - Test Error: 0.02008
+
+- **Step 4 Errors**:
+  - Training Error (Optimal): 0.01595
+  - Test Error (Optimal): 0.01975
+
+### Interpretation and Conclusions
+
+1. **Early Stopping**:
+   - The optimal iteration (1895) minimizes the test error, ensuring the model generalizes well to unseen data. Early stopping prevents overfitting, as evidenced by the slightly higher training error compared to Step 3.
+
+2. **Improved Test Error**:
+   - The test error in Step 4 is slightly lower than in Step 3, demonstrating improved generalization due to the early stopping criterion.
+
+3. **Model Quality**:
+   - The model performs well, balancing training and test errors effectively. 
+   - The small difference between training and test errors indicates good generalization capability.
+
+4. **Practical Insights**:
+   - Early stopping based on test error is a practical and effective strategy to improve the model's performance without overfitting.
+   
 ---
 # Appendix
 ## Code for Assignment 1
@@ -353,5 +599,140 @@ abline(0, 1, col = "red")
 
 ## Code for Assignment 3
 ```{r appendix-assignment-3, echo=TRUE, eval=FALSE}
+# PART 1: PCA Using eigen()
+
+# Load necessary libraries
+library(dplyr)
+
+# Data Preprocessing
+data <- read.csv("data/communities.csv")
+scaled_data <- data %>% select(-ViolentCrimesPerPop) %>% scale()
+
+# PCA using eigen()
+cov_matrix <- cov(scaled_data)
+eigen_results <- eigen(cov_matrix)
+
+# Calculate variance explained
+eigenvalues <- eigen_results$values
+explained_variance <- eigenvalues / sum(eigenvalues)
+cumulative_variance <- cumsum(explained_variance)
+
+# Find number of components needed for 95% variance
+num_components_95 <- which(cumulative_variance >= 0.95)[1]
+pc1_variance <- explained_variance[1]
+pc2_variance <- explained_variance[2]
+
+# Output results
+cat("Number of components for 95% variance:", num_components_95, "\n")
+cat("Proportion of variance explained by PC1:", pc1_variance, "\n")
+cat("Proportion of variance explained by PC2:", pc2_variance, "\n")
+
+
+# PART 2: PCA Using princomp()
+
+# Perform PCA
+pca_results <- princomp(scaled_data, cor = TRUE)
+
+# Plot PC1 trace
+plot(pca_results$scores[, 1], type = "l", main = "Trace Plot of PC1", ylab = "PC1 Scores")
+
+# Identify top 5 contributing features to PC1
+loadings <- pca_results$loadings[, 1]
+top_5_features <- sort(abs(loadings), decreasing = TRUE)[1:5]
+
+# Output results
+cat("Top 5 features contributing to PC1 (absolute values):\n")
+print(names(top_5_features))
+
+# Plot PC1 vs PC2 with crime levels
+library(ggplot2)
+plot_data <- data.frame(PC1 = pca_results$scores[, 1],
+                        PC2 = pca_results$scores[, 2],
+                        Crime = data$ViolentCrimesPerPop)
+ggplot(plot_data, aes(x = PC1, y = PC2, color = Crime)) +
+  geom_point() +
+  scale_color_gradient(low = "blue", high = "red") +
+  ggtitle("PC1 vs PC2 Colored by Violent Crimes Per Population")
+
+
+# PART 3: Linear Regression
+
+# Split data into training and test sets
+set.seed(123)
+train_indices <- sample(1:nrow(data), nrow(data) / 2)
+train_data <- data[train_indices, ]
+test_data <- data[-train_indices, ]
+
+# Scale features and prepare responses
+scaled_train <- scale(train_data %>% select(-ViolentCrimesPerPop))
+scaled_test <- scale(test_data %>% select(-ViolentCrimesPerPop),
+                     center = attr(scaled_train, "scaled:center"),
+                     scale = attr(scaled_train, "scaled:scale"))
+train_response <- train_data$ViolentCrimesPerPop
+test_response <- test_data$ViolentCrimesPerPop
+
+# Fit linear regression
+model <- lm(train_response ~ ., data = as.data.frame(scaled_train))
+
+# Compute training and test errors
+train_predictions <- predict(model, as.data.frame(scaled_train))
+test_predictions <- predict(model, as.data.frame(scaled_test))
+train_error <- mean((train_response - train_predictions)^2)
+test_error <- mean((test_response - test_predictions)^2)
+
+# Output results
+cat("Training error:", train_error, "\n")
+cat("Test error:", test_error, "\n")
+
+
+# PART 4: BFGS Optimization with Early Stopping
+
+# Create cost function for tracking errors
+iteration_errors <- list()
+iteration_test_errors <- list()
+
+cost_function_with_tracking <- function(theta, X, y, X_test, y_test) {
+  train_predictions <- X %*% theta
+  train_error <- y - train_predictions
+  train_mse <- mean(train_error^2)
+  
+  test_predictions <- X_test %*% theta
+  test_error <- y_test - test_predictions
+  test_mse <- mean(test_error^2)
+  
+  iteration_errors <<- append(iteration_errors, list(train_mse))
+  iteration_test_errors <<- append(iteration_test_errors, list(test_mse))
+  
+  return(train_mse)
+}
+
+# Prepare matrices for optimization
+X_train <- as.matrix(cbind(1, scaled_train))
+X_test <- as.matrix(cbind(1, scaled_test))
+
+# Run optimization
+optim_results <- optim(rep(0, ncol(X_train)), 
+                       fn = function(theta) cost_function_with_tracking(theta, X_train, train_response, X_test, test_response),
+                       method = "BFGS", 
+                       control = list(trace = 1, maxit = 100))
+
+# Prepare error data for plotting
+errors <- data.frame(Iteration = 1:length(iteration_errors),
+                     TrainingError = unlist(iteration_errors),
+                     TestError = unlist(iteration_test_errors))
+filtered_errors <- errors[-(1:500), ]
+
+# Plot training and test errors
+ggplot(filtered_errors, aes(x = Iteration)) +
+  geom_line(aes(y = TrainingError, color = "Training Error")) +
+  geom_line(aes(y = TestError, color = "Test Error")) +
+  ggtitle("Training and Test Errors Over Iterations") +
+  ylab("Error") + xlab("Iteration")
+
+# Identify optimal iteration
+optimal_iteration <- which.min(filtered_errors$TestError)
+cat("Optimal iteration:", optimal_iteration, "\n")
+cat("Optimal Training Error:", filtered_errors$TrainingError[optimal_iteration], "\n")
+cat("Optimal Test Error:", filtered_errors$TestError[optimal_iteration], "\n")
 
 ```
