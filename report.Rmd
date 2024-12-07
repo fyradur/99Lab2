@@ -42,3 +42,20 @@ df$poutcome <- factor(df$poutcome, levels = c('failure', 'other', 'success', 'un
 colSums(is.na(df))
 ```
 
+
+## Task 1
+Let's divide the data as specified in lecture 2a.
+```{r}
+data <- df
+n=dim(data)[1]
+set.seed(12345) 
+id=sample(1:n, floor(n*0.4)) 
+train=data[id,] 
+id1=setdiff(1:n, id)
+set.seed(12345) 
+id2=sample(id1, floor(n*0.3)) 
+valid=data[id2,]
+id3=setdiff(id1,id2)
+test=data[id3,]
+```
+
