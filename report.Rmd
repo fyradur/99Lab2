@@ -23,6 +23,8 @@ The categories specified in the data compared to the instructions differed. Here
 * A number of columns had unknown as a category, specifically those between marital to to contact and poutcome.
 * poutcome had 'other' in csv which is assumed in this report to be the same as 'nonexistent' given this category doesn't come up.
 * Day of week column does not exist in csv.
+* There exists a column called "day" which is not specified in the instruction. It is presumed in the report that this is the numbered day of the month.
+* Not previously contacted in pdays is encoded as -1 in the csv as opposed to 999 as it is described in the instructions.
 ```{r}
 library(tidyverse)
 df_raw <- read_delim(file = "data/bank-full.csv", delim = ";")
